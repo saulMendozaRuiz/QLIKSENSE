@@ -1,0 +1,38 @@
+sub PATCH(vTable, vFolder, vUpdatedAt, vID)
+	SET initLoad=0;
+	// Determine load type based on presence of maxUpdatedAt QVD file
+    IF FileSize('$(vFolder)/maxUpdatedAt_$(vTable).qvd')> 0 THEN
+    
+    	Trace ** Incremental Load - $(vTable) **;
+		// Retrieve the most recent updatedAt value for incremental loading
+        maxUpdatedAt:
+        LOAD maxUpdatedAt FROM [$(vFolder)/maxUpdatedAt_$(vTable).qvd] (qvd);
+        Let vmaxUpdatedAt = Peek('maxUpdatedAt');
+        Drop Table maxUpdatedAt;  
+    ELSE
+    	// Initialize vmaxUpdatedAt for a full load case
+    	Trace ** Full Load - $(vTable) **;
+        Let vmaxUpdatedAt = Date(Addyears(YearStart(Today(1)), -2), 'YYYY-MM-DD 00:00:00');
+        Let initLoad=1;
+    ENDIF
+	
+    //Load the SQL query
+    CALL $(vTable)Load('$(vUpdatedAt)', '$(vmaxUpdatedAt)');
+    
+    //Store the updatedAt timestamp in the proper folder
+    maxUpdatedAt:
+    LOAD TimeStamp(Max($(vUpdatedAt)) - Interval(0.0005),'YYYY-MM-DD hh:mm:ss') as maxUpdatedAt Resident $(vTable);
+    Store maxUpdatedAt into [$(vFolder)/maxUpdatedAt_$(vTable).qvd](QVD);
+	Drop Table maxUpdatedAt; 
+    
+    //Store the .qvd table
+    IF initLoad=0 then
+    	LET vNow = Date(Now(1), 'YY.MM.DD_HH.MM.SS');
+		Store $(vTable) into [$(vFolder)/partial_loads/$(vTable)_$(vNow).qvd](QVD);
+        Concatenate($(vTable))
+    	LOAD * FROM [$(vFolder)/$(vTable).qvd](qvd) Where Not Exists($(vID)); // patch step
+	end if
+    
+    Store $(vTable) into [$(vFolder)/$(vTable).qvd](QVD);
+    Drop Table $(vTable);
+end sub
