@@ -1,5 +1,5 @@
 # PIVOT Function for QlikView/Qlik Sense
-### by SAUL ENRIQUE MENDOZA RUIZ @saulMendozaRuiz
+### by SAUL ENRIQUE MENDOZA RUIZ
 
 This script function provides an efficient way to create dynamic pivot tables in QlikView or Qlik Sense, allowing data transformation from a long format to a wide format.
 
