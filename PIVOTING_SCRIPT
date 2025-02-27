@@ -1,0 +1,40 @@
+Sub PIVOT(vTable, xAxis, yAxis, value, aggType)  // aggType:      0 is for count, 1 is for sum
+
+    If IsNull('$(vTable)') Or IsNull('$(xAxis)') Or IsNull('$(yAxis)') Then
+    	Trace ### Error: Missing required parameters ###;
+    	Exit Script;
+    Endif
+
+    Let xAxis = '$(xAxis)';
+    Let yAxis = '$(yAxis)';
+    Let value='$(value)';
+    LeT aggType= '$(aggType)';
+
+    NoConcatenate
+    temporal:
+    Load 
+    	[$(yAxis)],
+    	[$(xAxis)],
+    	If($(aggType)=1,Sum([$(value)]),Count([$(value)])) as aggt        
+    Resident $(vTable)
+    Group By [$(yAxis)], [$(xAxis)];
+
+    FinalTable:
+    Load Distinct [$(yAxis)]
+    Resident $(vTable)
+    Order by [$(yAxis)];
+
+    FOR i = 1 to FieldValueCount('$(xAxis)')
+        LET vState = FieldValue('$(xAxis)', $(i));
+
+        Left Join (FinalTable)
+        Load Distinct [$(yAxis)],
+             aggt as [$(vState)]
+        Resident temporal
+        Where [$(xAxis)] = '$(vState)';
+    Next
+
+    Drop Table $(vTable), temporal;
+    Rename table FinalTable TO $(vTable);
+
+End sub
